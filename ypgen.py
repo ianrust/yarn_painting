@@ -22,8 +22,8 @@ def generateDecisionYarns(args,image_grid):
         i=i+1
         # print i/float(len(yarns))
         # print str(yarner.start)+','+str(yarner.finish)
-    for pixel in image_grid:
-		print pixel.num_pyarns
+    # for pixel in image_grid:
+		# print pixel.num_pyarns
     return image_grid,yarns
 
 def generateGrid(verticalSteps,horizontalSteps,xscale=1,yscale=1,edges=False):
@@ -40,6 +40,14 @@ def getPerpDistance(point,start,end):
     distance = math.fabs(Dq*point.x-Dp*point.y+start.x*end.y-start.y*end.x)/math.sqrt(Dp**2+Dq**2)
     return distance
 
+def getObjectiveFunction(yarns,image_act):
+	score=0.0
+	for yarn in yarns:
+		for point in yarn.cont_points:
+			
+			score=score+math.exp(-point[1]**2)# also multiply by difference between actual RGB value and non in exponent
+	return score/(len(yarns)*len(image_act))
+	
 class yarn():
     def __init__(self,start,finish,num_channels):
         self.start=start
@@ -52,10 +60,10 @@ class yarn():
         i=0
 		#make this the one that gives index
         for point in grid:
-            if getPerpDistance(point,self.start,self.finish)<=dist:
-                self.cont_points.append((point,getPerpDistance(point,self.start,self.finish)))
-                point.num_pyarns=point.num_pyarns+1
-                point.pyarns.append(self)
+            # if getPerpDistance(point,self.start,self.finish)<=dist:
+            self.cont_points.append((point,getPerpDistance(point,self.start,self.finish)))
+            point.num_pyarns=point.num_pyarns+1
+            point.pyarns.append(self)
             i=i+1		
 	return grid
 
@@ -70,6 +78,7 @@ def main():
     args=parseArgs()
     image_grid=generateGrid(args.res[0],args.res[1],xscale=args.image_size[1]/args.res[1],yscale=args.image_size[0]/args.res[0])
     image_grid,yarns=generateDecisionYarns(args,image_grid)
+    print getObjectiveFunction(yarns,image_grid)
 	   
 if __name__ == "__main__":
     main()
