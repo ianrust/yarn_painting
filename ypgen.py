@@ -1,6 +1,6 @@
 import itertools,sys,argparse,math,Image,time,random
 import numpy as np
-from scipy.optimize import minimize
+import scipy.optimize as so
 
 def parseArgs():
 	parser=argparse.ArgumentParser(prog=sys.argv[0])
@@ -19,7 +19,7 @@ def generateDecisionYarns(args,image_grid,image_matrix):
 	yarns = [yarn(combo[0],combo[1]) for combo in peg_combos if not (combo[0].x==combo[1].x or combo[0].y==combo[1].y)]
 	i=0
 	for yarner in yarns:
-		image_grid=yarner.setContributingPoints(dist=2*image_matrix.shape[0]/args.image_size,grid=image_grid)
+		image_grid=yarner.setContributingPoints(dist=image_matrix.shape[0]/args.image_size,grid=image_grid)
 		i=i+1
 		print str(int(i/float(len(yarns))*100))+"%"
 		# print str(yarner.start)+','+str(yarner.finish)
@@ -49,8 +49,14 @@ def getObjectiveFunction(yarn_on_off):
 	global yarns_opt
 	score=0.0
 	for yi,yarn in enumerate(yarns_opt):
+		# print "yarn"
 		for point in yarn.cont_points:
-			score=score+round(yarn_on_off[yi])*math.exp(-(point[1])**2)# also multiply by difference between actual RGB value and non in exponent
+			isthere=round(yarn_on_off[yi])
+			if isthere<0: isthere =0 
+			if isthere>1: isthere =1 
+			score=score+(point[0].r-isthere*math.exp(-(0.1+point[1])**2))/(point[0].r)# also multiply by difference between actual RGB value and non in exponent
+			# print score
+	# print "final"
 	print score
 	return score/(len(yarns_opt)*len(image_opt))
 	
@@ -64,7 +70,6 @@ class yarn():
 		for i,point in enumerate(grid):
 			if getPerpDistance(point,self.start,self.finish)<=dist:
 				self.cont_points.append((point,getPerpDistance(point,self.start,self.finish)))
-				print self.cont_points[0]
 				point.num_pyarns=point.num_pyarns+1
 				point.pyarns.append(self)
 		return grid
@@ -87,14 +92,13 @@ def main():
 	image_matrix.shape
 	image_grid=generateGrid(image_matrix.shape[0],image_matrix.shape[1],xscale=image_matrix.shape[0]/args.image_size,yscale=image_matrix.shape[0]/args.image_size,image_matrix=image_matrix)
 	image_grid,yarns=generateDecisionYarns(args,image_grid,image_matrix)
-	yoi = [random.randint(0,1) for yarn in yarns]
+	yoi = [random.randint(0,100)/100.0 for yarn in yarns]
 
 	yarns_opt=yarns
 	image_opt=image_grid
 
-	result=minimize(getObjectiveFunction,yoi,method='BFGS')
-	print result.x
-	print result.message
+	result=so.fmin_powell(getObjectiveFunction,yoi,maxiter=10)
+	print result
 	   
 if __name__ == "__main__":
 	main()
