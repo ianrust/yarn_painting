@@ -1,11 +1,12 @@
-import itertools,sys,argparse,math,Image,time,random
+import itertools,sys,argparse,math,time,random
+from PIL import Image
 import numpy as np
 import scipy.optimize as so
 
 def parseArgs():
 	parser=argparse.ArgumentParser(prog=sys.argv[0])
 	parser.add_argument('-s','--size',nargs=2,dest='size',help='size in meters of the canvas [height,width]',default = [1.0,2.0],type=float)
-	parser.add_argument('-i','--img','--image',dest='image_filename',help='image file to be yarn-paint-processed')
+	parser.add_argument('-i','--img','--image',dest='image_filename',help='image file to be yarn-paint-processed',default='download.jpg')
 	parser.add_argument('-is','--imsize',dest='image_size',default=0.5,help='size of image in meters vertical side')
 	parser.add_argument('-p','--pegs',nargs=2,dest='pegs',help='number of pegs on each edge [vertical,horizontal]',default = [100,100],type=int)
 	parser.add_argument('-d','--disp',dest='disp',help='should we display the processed image?',default=False,action='store_true')
@@ -46,16 +47,21 @@ def getPerpDistance(point,start,end):
 	return distance
 
 def getObjectiveFunction(yarn_on_off):
-	global yarns_opt
+	global yarns_opt,image_opt
 	score=0.0
 	for yi,yarn in enumerate(yarns_opt):
 		# print "yarn"
-		for point in yarn.cont_points:
-			isthere=round(yarn_on_off[yi])
-			if isthere<0: isthere =0 
-			if isthere>1: isthere =1 
-			score=score+(point[0].r-isthere*math.exp(-(0.1+point[1])**2))/(point[0].r)# also multiply by difference between actual RGB value and non in exponent
-			# print score
+		isthere=round(yarn_on_off[yi])
+		if isthere<0: isthere =0
+		yarn.num_strings=round(isthere)
+	for point in iamge_opt:
+		point_score=0
+		for yarn in point.pyarns:
+			dist=getPerpDistance(point,yarn.start,yarn.finish)
+			point_score=point_score+round(isthere)*math.exp(-(dist**2))/(point.r)# also multiply by difference between actual RGB value and non in exponent
+			
+		score=score+point_score
+
 	# print "final"
 	print score
 	return score/(len(yarns_opt)*len(image_opt))
@@ -64,6 +70,7 @@ class yarn():
 	def __init__(self,start,finish):
 		self.start=start
 		self.finish=finish
+		self.num_strings=0
 	def setContributingPoints(self,dist,grid):
 		self.cont_points=[]
 		#make this the one that gives index
@@ -87,9 +94,12 @@ class pixel():
 def main():
 	global yarns_opt,image_opt
 	args=parseArgs()
+	print args.image_filename
 	image=Image.open(args.image_filename)
+	print image
 	image_matrix=np.asarray(image)
-	image_matrix.shape
+	print image_matrix
+	print image_matrix[0][0]
 	image_grid=generateGrid(image_matrix.shape[0],image_matrix.shape[1],xscale=image_matrix.shape[0]/args.image_size,yscale=image_matrix.shape[0]/args.image_size,image_matrix=image_matrix)
 	image_grid,yarns=generateDecisionYarns(args,image_grid,image_matrix)
 	yoi = [random.randint(0,100)/100.0 for yarn in yarns]
